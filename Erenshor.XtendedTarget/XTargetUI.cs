@@ -214,7 +214,7 @@ namespace Erenshor.XTarget
         // ─────────────────────────────────────────────────────────────────────
         private void HandleDrag()
         {
-            if (_window == null || _locked || !_chromeVisible) return;
+            if (_window == null || _locked || XTargetPlugin.AutoHide.Value) return;
 
             if (Input.GetMouseButtonDown(0))
             {
@@ -254,14 +254,17 @@ namespace Erenshor.XTarget
             ExtendedTarget.BuildSlotList();
             var slots = ExtendedTarget.Slots;
 
-            bool isEmpty = slots.Count == 0;
+            bool isEmpty  = slots.Count == 0;
+            bool autoHide = XTargetPlugin.AutoHide.Value;
 
-            // Auto-hide chrome when nothing has aggro
-            bool showChrome = !XTargetPlugin.AutoHide.Value || !isEmpty;
+            // AutoHide ON  -> chrome always hidden, rows only
+            // AutoHide OFF -> chrome always visible
+            bool showChrome = !autoHide;
             if (showChrome != _chromeVisible)
                 SetChromeVisible(showChrome);
 
-            _emptyLabel.gameObject.SetActive(isEmpty && _chromeVisible);
+            // Empty label only makes sense when chrome is visible
+            _emptyLabel.gameObject.SetActive(showChrome && isEmpty);
 
             int max = Mathf.Min(slots.Count, _rows.Length);
 
@@ -278,11 +281,25 @@ namespace Erenshor.XTarget
                 }
             }
 
-            // Resize window height to fit active rows
-            float bodyH = isEmpty
-                ? ROW_H                                    // just enough for the empty label
-                : max * ROW_H + PADDING;
-            _window.sizeDelta = new Vector2(WINDOW_W, TITLE_H + bodyH + PADDING);
+            // Resize window and adjust body offsets to match mode
+            if (autoHide)
+            {
+                // No chrome -- body fills entire window, no title bar offset
+                _body.offsetMin = new Vector2(0, 0);
+                _body.offsetMax = new Vector2(0, 0);
+                _window.sizeDelta = new Vector2(WINDOW_W, max * ROW_H);
+            }
+            else
+            {
+                // Full chrome -- body inset by padding and title bar
+                _body.offsetMin = new Vector2(PADDING, PADDING);
+                _body.offsetMax = new Vector2(-PADDING, -TITLE_H);
+                if (!_minimized)
+                {
+                    float bodyH = isEmpty ? ROW_H : max * ROW_H + PADDING;
+                    _window.sizeDelta = new Vector2(WINDOW_W, TITLE_H + bodyH + PADDING);
+                }
+            }
         }
 
         private void ApplySlot(SlotRow row, XTargetSlot slot, int num)
@@ -574,20 +591,9 @@ namespace Erenshor.XTarget
         private void SetChromeVisible(bool visible)
         {
             _chromeVisible = visible;
-
-            if (_windowBgImage != null)  _windowBgImage.enabled  = visible;
-            if (_windowOutline != null)  _windowOutline.enabled  = visible;
+            if (_windowBgImage != null)  _windowBgImage.enabled = visible;
+            if (_windowOutline != null)  _windowOutline.enabled = visible;
             if (_titleBarGO    != null)  _titleBarGO.SetActive(visible);
-
-            // When chrome is hidden also collapse the window height to just the rows,
-            // with no extra padding so it sits flush. Restore full height when shown.
-            if (!_minimized)
-            {
-                int max = Mathf.Min(ExtendedTarget.Slots.Count, _rows.Length);
-                _window.sizeDelta = visible
-                    ? new Vector2(WINDOW_W, TITLE_H + max * ROW_H + PADDING * 2)
-                    : new Vector2(WINDOW_W, max * ROW_H);
-            }
         }
 
         private void ToggleLock()
