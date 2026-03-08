@@ -15,7 +15,7 @@ namespace Erenshor.XTarget
         {
             public const string PLUGIN_GUID    = "com.erenshor.xtarget";
             public const string PLUGIN_NAME    = "Extended Target Window";
-            public const string PLUGIN_VERSION = "0.0.0";
+            public const string PLUGIN_VERSION = "1.0.0";
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -31,6 +31,8 @@ namespace Erenshor.XTarget
         internal static ConfigEntry<float>   WindowX;
         internal static ConfigEntry<float>   WindowY;
         internal static ConfigEntry<int>     MaxSlots;
+        internal static ConfigEntry<bool>    Locked;
+        internal static ConfigEntry<bool>    AutoHide;
 
         // ─────────────────────────────────────────────────────────────────────
         // Lifecycle
@@ -66,6 +68,14 @@ namespace Erenshor.XTarget
             WindowY = Config.Bind(
                 "Window", "PositionY", -10f,
                 "Saved Y position of the window (negative = from top)");
+
+            Locked = Config.Bind(
+                "Window", "Locked", false,
+                "Whether the window position is locked");
+
+            AutoHide = Config.Bind(
+                "Window", "AutoHide", true,
+                "Hide window chrome when nothing has aggro on you or your group");
         }
     }
 }

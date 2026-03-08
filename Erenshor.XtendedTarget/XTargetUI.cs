@@ -137,10 +137,14 @@ namespace Erenshor.XTarget
         private RectTransform _window;
         private bool          _minimized;
         private bool          _visible = true;
+        private bool          _locked;
 
         // Drag state
         private bool    _dragging;
         private Vector2 _dragOffset;
+
+        // Lock button label ref so we can update its icon
+        private TextMeshProUGUI _lockBtnLabel;
 
         // Slot row pool — one entry per visible slot
         private SlotRow[] _rows;
@@ -148,6 +152,12 @@ namespace Erenshor.XTarget
         // No-aggro label shown when list is empty
         private TextMeshProUGUI _emptyLabel;
         private RectTransform   _body;
+
+        // Chrome refs for auto-hide (background, title bar, border outline)
+        private Image           _windowBgImage;
+        private GameObject      _titleBarGO;
+        private Outline         _windowOutline;
+        private bool            _chromeVisible = true;
 
         // ─────────────────────────────────────────────────────────────────────
         // Inner class that owns the uGUI objects for one row
@@ -175,16 +185,25 @@ namespace Erenshor.XTarget
             BuildUI();
         }
 
+        private static bool IsGameplayScene()
+        {
+            string s = SceneManager.GetActiveScene().name;
+            return s != "Menu" && s != "LoadScene";
+        }
+
         private void Update()
         {
-            // Toggle visibility
-            if (Input.GetKeyDown(XTargetPlugin.ToggleKey.Value))
+            // Toggle visibility (gameplay scenes only)
+            if (Input.GetKeyDown(XTargetPlugin.ToggleKey.Value) && IsGameplayScene())
             {
                 _visible = !_visible;
-                if (_canvas != null) _canvas.gameObject.SetActive(_visible);
             }
 
-            if (_canvas == null || !_visible) return;
+            // Force-hide in non-gameplay scenes regardless of _visible
+            bool shouldShow = _visible && IsGameplayScene();
+            if (_canvas != null) _canvas.gameObject.SetActive(shouldShow);
+
+            if (_canvas == null || !shouldShow) return;
 
             HandleDrag();
             RefreshSlots();
@@ -195,7 +214,7 @@ namespace Erenshor.XTarget
         // ─────────────────────────────────────────────────────────────────────
         private void HandleDrag()
         {
-            if (_window == null) return;
+            if (_window == null || _locked || !_chromeVisible) return;
 
             if (Input.GetMouseButtonDown(0))
             {
@@ -211,15 +230,20 @@ namespace Erenshor.XTarget
                 }
             }
 
-            if (Input.GetMouseButtonUp(0)) _dragging = false;
+            if (Input.GetMouseButtonUp(0))
+            {
+                if (_dragging)
+                {
+                    // Persist final position to disk
+                    XTargetPlugin.WindowX.Value = _window.anchoredPosition.x;
+                    XTargetPlugin.WindowY.Value = _window.anchoredPosition.y;
+                    XTargetPlugin.Instance.Config.Save();
+                }
+                _dragging = false;
+            }
 
             if (_dragging)
-            {
                 _window.position = (Vector2)Input.mousePosition + _dragOffset;
-                // Persist position to config
-                XTargetPlugin.WindowX.Value = _window.anchoredPosition.x;
-                XTargetPlugin.WindowY.Value = _window.anchoredPosition.y;
-            }
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -231,7 +255,13 @@ namespace Erenshor.XTarget
             var slots = ExtendedTarget.Slots;
 
             bool isEmpty = slots.Count == 0;
-            _emptyLabel.gameObject.SetActive(isEmpty);
+
+            // Auto-hide chrome when nothing has aggro
+            bool showChrome = !XTargetPlugin.AutoHide.Value || !isEmpty;
+            if (showChrome != _chromeVisible)
+                SetChromeVisible(showChrome);
+
+            _emptyLabel.gameObject.SetActive(isEmpty && _chromeVisible);
 
             int max = Mathf.Min(slots.Count, _rows.Length);
 
@@ -341,11 +371,14 @@ namespace Erenshor.XTarget
             _window.anchoredPosition = new Vector2(XTargetPlugin.WindowX.Value, XTargetPlugin.WindowY.Value);
             _window.sizeDelta        = new Vector2(WINDOW_W, TITLE_H + ROW_H + PADDING * 2);
 
-            AddImage(_window.gameObject, C_WindowBg);
-            AddOutline(_window.gameObject, C_Border);
+            _windowBgImage = AddImage(_window.gameObject, C_WindowBg);
+            _windowOutline = _window.gameObject.AddComponent<Outline>();
+            _windowOutline.effectColor    = C_Border;
+            _windowOutline.effectDistance = new Vector2(1, -1);
 
             // ── Title bar ─────────────────────────────────────────────────────
             var titleBar = MakeRT("TitleBar", _window);
+            _titleBarGO  = titleBar.gameObject;
             titleBar.anchorMin = new Vector2(0, 1);
             titleBar.anchorMax = new Vector2(1, 1);
             titleBar.pivot     = new Vector2(0, 1);
@@ -359,6 +392,17 @@ namespace Erenshor.XTarget
             titleTxt.fontSize  = 12;
             titleTxt.fontStyle = FontStyles.Bold;
             titleTxt.alignment = TextAlignmentOptions.MidlineLeft;
+
+            // Lock button (to the left of minimize button)
+            var lockBtn = MakeIconBtn("LockBtn", titleBar, "🔓");
+            var lockRT  = lockBtn.GetComponent<RectTransform>();
+            lockRT.anchorMin = new Vector2(1, 0);
+            lockRT.anchorMax = new Vector2(1, 1);
+            lockRT.pivot     = new Vector2(1, 0.5f);
+            lockRT.sizeDelta = new Vector2(24, 0);
+            lockRT.anchoredPosition = new Vector2(-26, 0);
+            _lockBtnLabel = lockBtn.GetComponentInChildren<TextMeshProUGUI>();
+            lockBtn.onClick.AddListener(ToggleLock);
 
             // Minimize button (top-right of title bar)
             var minBtn = MakeIconBtn("MinBtn", titleBar, "—");
@@ -407,6 +451,10 @@ namespace Erenshor.XTarget
             }
 
             XTargetPlugin.Log.LogInfo("[XTarget] uGUI built — " + cap + " slot rows pre-built.");
+
+            // Restore saved lock state
+            if (XTargetPlugin.Locked.Value)
+                ToggleLock();
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -521,6 +569,37 @@ namespace Erenshor.XTarget
             row.HateRank.gameObject.AddComponent<LayoutElement>().preferredWidth = 20;
 
             return row;
+        }
+
+        private void SetChromeVisible(bool visible)
+        {
+            _chromeVisible = visible;
+
+            if (_windowBgImage != null)  _windowBgImage.enabled  = visible;
+            if (_windowOutline != null)  _windowOutline.enabled  = visible;
+            if (_titleBarGO    != null)  _titleBarGO.SetActive(visible);
+
+            // When chrome is hidden also collapse the window height to just the rows,
+            // with no extra padding so it sits flush. Restore full height when shown.
+            if (!_minimized)
+            {
+                int max = Mathf.Min(ExtendedTarget.Slots.Count, _rows.Length);
+                _window.sizeDelta = visible
+                    ? new Vector2(WINDOW_W, TITLE_H + max * ROW_H + PADDING * 2)
+                    : new Vector2(WINDOW_W, max * ROW_H);
+            }
+        }
+
+        private void ToggleLock()
+        {
+            _locked = !_locked;
+            if (_lockBtnLabel != null)
+            {
+                _lockBtnLabel.text  = _locked ? "🔒" : "🔓";
+                _lockBtnLabel.color = _locked ? C_HateGold : Hex("#64748B", 255);
+            }
+            XTargetPlugin.Locked.Value = _locked;
+            XTargetPlugin.Instance.Config.Save();
         }
 
         private void ToggleMinimize()
