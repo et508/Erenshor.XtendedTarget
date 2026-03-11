@@ -13,7 +13,7 @@ namespace Erenshor.XTarget
         // ─────────────────────────────────────────────────────────────────────
         internal static class PluginInfo
         {
-            public const string PLUGIN_GUID    = "com.erenshor.xtarget";
+            public const string PLUGIN_GUID    = "et508.erenshor.xtarget";
             public const string PLUGIN_NAME    = "Extended Target Window";
             public const string PLUGIN_VERSION = "1.0.0";
         }
@@ -74,7 +74,7 @@ namespace Erenshor.XTarget
                 "Whether the window position is locked");
 
             AutoHide = Config.Bind(
-                "Window", "AutoHide", true,
+                "Window", "AutoHide", false,
                 "Hide window chrome when nothing has aggro on you or your group");
         }
     }
