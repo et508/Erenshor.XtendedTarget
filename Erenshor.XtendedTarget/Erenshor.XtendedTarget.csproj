@@ -87,4 +87,7 @@
     <Target Name="PostBuild_Debug" AfterTargets="Build" Condition="'$(Configuration)' == 'Debug'">
         <Exec Command='xcopy /Y /Q "$(TargetDir)$(TargetName).dll" "C:\Program Files (x86)\Steam\steamapps\common\Erenshor\BepInEx\plugins"' />
     </Target>
+    <Target Name="PostBuild_Release" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+        <Exec Command='xcopy /Y /Q "$(TargetDir)$(TargetName).dll" "C:\Erenshor Modding\Plugins\Erenshor.XtendedTarget\build\Erenshor.XtendedTarget"' />
+    </Target>
 </Project>
