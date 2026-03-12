@@ -8,9 +8,7 @@ namespace Erenshor.XTarget
     [BepInPlugin(PluginInfo.PLUGIN_GUID, PluginInfo.PLUGIN_NAME, PluginInfo.PLUGIN_VERSION)]
     public class XTargetPlugin : BaseUnityPlugin
     {
-        // ─────────────────────────────────────────────────────────────────────
-        // Plugin metadata
-        // ─────────────────────────────────────────────────────────────────────
+
         internal static class PluginInfo
         {
             public const string PLUGIN_GUID    = "et508.erenshor.xtarget";
@@ -18,15 +16,9 @@ namespace Erenshor.XTarget
             public const string PLUGIN_VERSION = "1.0.0";
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Singleton
-        // ─────────────────────────────────────────────────────────────────────
         internal static XTargetPlugin Instance { get; private set; }
         internal static ManualLogSource Log     { get; private set; }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Config entries
-        // ─────────────────────────────────────────────────────────────────────
         internal static ConfigEntry<KeyCode> ToggleKey;
         internal static ConfigEntry<float>   WindowX;
         internal static ConfigEntry<float>   WindowY;
@@ -34,9 +26,6 @@ namespace Erenshor.XTarget
         internal static ConfigEntry<bool>    Locked;
         internal static ConfigEntry<bool>    AutoHide;
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Lifecycle
-        // ─────────────────────────────────────────────────────────────────────
         private void Awake()
         {
             Instance = this;
@@ -48,9 +37,6 @@ namespace Erenshor.XTarget
             Log.LogInfo($"{PluginInfo.PLUGIN_NAME} v{PluginInfo.PLUGIN_VERSION} loaded.");
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Config binding
-        // ─────────────────────────────────────────────────────────────────────
         private void BindConfig()
         {
             ToggleKey = Config.Bind(

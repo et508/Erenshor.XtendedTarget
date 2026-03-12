@@ -6,11 +6,7 @@ using UnityEngine.UI;
 
 namespace Erenshor.XTarget
 {
-    // ─────────────────────────────────────────────────────────────────────────
-    // XTargetUI  —  static bootstrap (called once from Plugin.Awake)
-    // Mirrors the AutoShor pattern: persistent loader watches scene events
-    // and spawns the UI controller under GameManager each scene.
-    // ─────────────────────────────────────────────────────────────────────────
+
     internal static class XTargetUI
     {
         private const  string LoaderName  = "XTarget_Loader";
@@ -38,10 +34,6 @@ namespace Erenshor.XTarget
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // XTargetLoader  —  persistent MonoBehaviour that survives scene loads.
-    // Waits for GameManager to exist, then spawns XTargetUIController once.
-    // ─────────────────────────────────────────────────────────────────────────
     internal class XTargetLoader : MonoBehaviour
     {
         internal static XTargetLoader Instance;
@@ -64,7 +56,7 @@ namespace Erenshor.XTarget
 
         private IEnumerator WaitAndSpawn()
         {
-            // Wait until GameManager exists in the scene (up to 30 s)
+
             GameObject anchor = null;
             float waited = 0f;
             while (anchor == null && waited < 30f)
@@ -79,7 +71,6 @@ namespace Erenshor.XTarget
                 yield break;
             }
 
-            // Only one controller per scene
             if (GameObject.Find(ControllerName) != null) yield break;
 
             var host = new GameObject(ControllerName);
@@ -89,36 +80,18 @@ namespace Erenshor.XTarget
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // XTargetUIController  —  builds and drives the uGUI window.
-    //
-    // Layout (fixed-width 280 px, height grows with slot count):
-    //
-    //  ┌─────────────────────────────┐  ← title bar (28 px, draggable)
-    //  │  ⊞  Extended Targets    [—] │
-    //  ├─────────────────────────────┤
-    //  │ 1 [████░░] 72%  Goblin  YOU ▶ #1 │  ← slot row (26 px)
-    //  │ 2 [██████] 100% Spider  Ael ▶    │
-    //  │  …                           │
-    //  └─────────────────────────────┘
-    //
-    // Each slot row is a child of the vertical layout group inside the body.
-    // Row sub-objects: SlotNum | HpBarBg > HpBarFill | HpPct | Name | Arrow+Target | HateRank
-    // ─────────────────────────────────────────────────────────────────────────
     internal class XTargetUIController : MonoBehaviour
     {
-        // ── Palette ───────────────────────────────────────────────────────────
+
         private static readonly Color32 C_WindowBg    = Hex("#0F1014", 245);
         private static readonly Color32 C_TitleBg     = Hex("#1A1D23", 255);
         private static readonly Color32 C_Border      = Hex("#2D3139", 255);
         private static readonly Color32 C_RowNormal   = Hex("#14171C", 220);
-        private static readonly Color32 C_RowAggro    = Hex("#2D0A0A", 220);   // on player
-        private static readonly Color32 C_RowHover    = Hex("#1A3A5C", 220);
+        private static readonly Color32 C_RowAggro    = Hex("#2D0A0A", 220);
         private static readonly Color32 C_TextPri     = Hex("#F1F5F9", 255);
         private static readonly Color32 C_TextMuted   = Hex("#64748B", 255);
-        private static readonly Color32 C_TextGroup   = Hex("#88CCFF", 255);   // group member target
-        private static readonly Color32 C_Danger      = Hex("#EF4444", 255);   // YOU / top hate
-        private static readonly Color32 C_HateGold    = Hex("#FFAA00", 255);   // #1 hate
+        private static readonly Color32 C_Danger      = Hex("#EF4444", 255);
+        private static readonly Color32 C_HateGold    = Hex("#FFAA00", 255);
         private static readonly Color32 C_EmptyText   = Hex("#3D4148", 255);
         private static readonly Color32 C_HpGreen     = Hex("#10B981", 255);
         private static readonly Color32 C_HpYellow    = Hex("#F59E0B", 255);
@@ -132,35 +105,26 @@ namespace Erenshor.XTarget
         private const int   HP_BAR_W   = 80;
         private const int   MAX_NAME   = 13;
 
-        // ── Runtime ───────────────────────────────────────────────────────────
         private Canvas        _canvas;
         private RectTransform _window;
         private bool          _visible = true;
         private bool          _locked;
 
-        // Drag state
         private bool    _dragging;
         private Vector2 _dragOffset;
 
-        // Lock button label ref so we can update its icon
         private TextMeshProUGUI _lockBtnLabel;
 
-        // Slot row pool — one entry per visible slot
         private SlotRow[] _rows;
 
-        // No-aggro label shown when list is empty
         private TextMeshProUGUI _emptyLabel;
         private RectTransform   _body;
 
-        // Chrome refs for auto-hide (background, title bar, border outline)
         private Image           _windowBgImage;
         private GameObject      _titleBarGO;
         private Outline         _windowOutline;
         private bool            _chromeVisible = true;
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Inner class that owns the uGUI objects for one row
-        // ─────────────────────────────────────────────────────────────────────
         private class SlotRow
         {
             public GameObject   Root;
@@ -170,15 +134,12 @@ namespace Erenshor.XTarget
             public Image        HpBarFill;
             public TextMeshProUGUI HpPct;
             public TextMeshProUGUI Name;
-            public TextMeshProUGUI TargetArrow;  // "▶ <name>"
+            public TextMeshProUGUI TargetArrow;
             public TextMeshProUGUI HateRank;
             public Button       Btn;
 
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Unity lifecycle
-        // ─────────────────────────────────────────────────────────────────────
         private void Awake()
         {
             BuildUI();
@@ -192,13 +153,12 @@ namespace Erenshor.XTarget
 
         private void Update()
         {
-            // Toggle visibility (gameplay scenes only)
+
             if (Input.GetKeyDown(XTargetPlugin.ToggleKey.Value) && IsGameplayScene())
             {
                 _visible = !_visible;
             }
 
-            // Force-hide in non-gameplay scenes regardless of _visible
             bool shouldShow = _visible && IsGameplayScene();
             if (_canvas != null) _canvas.gameObject.SetActive(shouldShow);
 
@@ -208,9 +168,6 @@ namespace Erenshor.XTarget
             RefreshSlots();
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Drag  (title-bar only)
-        // ─────────────────────────────────────────────────────────────────────
         private void HandleDrag()
         {
             if (_window == null || _locked || XTargetPlugin.AutoHide.Value) return;
@@ -220,7 +177,7 @@ namespace Erenshor.XTarget
                 Vector2 local;
                 RectTransformUtility.ScreenPointToLocalPointInRectangle(
                     _window, Input.mousePosition, null, out local);
-                // Title bar is the top 28 px; in local space y goes 0 → negative downward
+
                 if (local.x >= 0 && local.x <= _window.sizeDelta.x &&
                     local.y <= 0 && local.y >= -TITLE_H)
                 {
@@ -233,7 +190,7 @@ namespace Erenshor.XTarget
             {
                 if (_dragging)
                 {
-                    // Persist final position to disk
+
                     XTargetPlugin.WindowX.Value = _window.anchoredPosition.x;
                     XTargetPlugin.WindowY.Value = _window.anchoredPosition.y;
                     XTargetPlugin.Instance.Config.Save();
@@ -245,9 +202,6 @@ namespace Erenshor.XTarget
                 _window.position = (Vector2)Input.mousePosition + _dragOffset;
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Refresh slot rows from the current aggro list
-        // ─────────────────────────────────────────────────────────────────────
         private void RefreshSlots()
         {
             ExtendedTarget.BuildSlotList();
@@ -256,13 +210,10 @@ namespace Erenshor.XTarget
             bool isEmpty  = slots.Count == 0;
             bool autoHide = XTargetPlugin.AutoHide.Value;
 
-            // AutoHide ON  -> chrome always hidden, rows only
-            // AutoHide OFF -> chrome always visible
             bool showChrome = !autoHide;
             if (showChrome != _chromeVisible)
                 SetChromeVisible(showChrome);
 
-            // Empty label only makes sense when chrome is visible
             _emptyLabel.gameObject.SetActive(showChrome && isEmpty);
 
             int max = Mathf.Min(slots.Count, _rows.Length);
@@ -280,17 +231,16 @@ namespace Erenshor.XTarget
                 }
             }
 
-            // Resize window and adjust body offsets to match mode
             if (autoHide)
             {
-                // No chrome -- body fills entire window, no title bar offset
+
                 _body.offsetMin = new Vector2(0, 0);
                 _body.offsetMax = new Vector2(0, 0);
                 _window.sizeDelta = new Vector2(WINDOW_W, max * ROW_H);
             }
             else
             {
-                // Full chrome -- body inset by padding and title bar
+
                 _body.offsetMin = new Vector2(PADDING, PADDING);
                 _body.offsetMax = new Vector2(-PADDING, -TITLE_H);
                 float bodyH = isEmpty ? ROW_H : max * ROW_H + PADDING;
@@ -300,26 +250,21 @@ namespace Erenshor.XTarget
 
         private void ApplySlot(SlotRow row, XTargetSlot slot, int num)
         {
-            // Row background — red tint if this NPC is on the player
+
             row.RowBg.color = slot.TargetingPlayer ? C_RowAggro : C_RowNormal;
 
-            // Slot number
             row.SlotNum.text = num.ToString();
 
-            // HP bar fill + colour
             row.HpBarFill.rectTransform.anchorMax = new Vector2(slot.HpPct, 1f);
             row.HpBarFill.color = HpColor(slot.HpPct);
 
-            // HP %
             row.HpPct.text = Mathf.RoundToInt(slot.HpPct * 100f) + "%";
 
-            // Name — truncate if needed
             row.Name.text  = slot.Name.Length > MAX_NAME
                 ? slot.Name.Substring(0, MAX_NAME - 1) + "…"
                 : slot.Name;
             row.Name.color = slot.TargetingPlayer ? C_Danger : C_TextPri;
 
-            // Arrow + target name
             if (string.IsNullOrEmpty(slot.TargetName))
             {
                 row.TargetArrow.text  = "<color=#3D4148>> ---</color>";
@@ -336,7 +281,6 @@ namespace Erenshor.XTarget
                 row.TargetArrow.text = $"<color=#666666>></color> <color=#88CCFF>{tName}</color>";
             }
 
-            // Hate rank
             if (slot.PlayerHateRank > 0)
             {
                 row.HateRank.gameObject.SetActive(true);
@@ -348,18 +292,14 @@ namespace Erenshor.XTarget
                 row.HateRank.gameObject.SetActive(false);
             }
 
-            // Wire click to target — capture index to avoid closure bug
             var captured = slot;
             row.Btn.onClick.RemoveAllListeners();
             row.Btn.onClick.AddListener(() => ExtendedTarget.TargetSlot(captured));
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // UI Build
-        // ─────────────────────────────────────────────────────────────────────
         private void BuildUI()
         {
-            // ── Canvas ────────────────────────────────────────────────────────
+
             var canvasGO = new GameObject("XTarget_Canvas");
             canvasGO.transform.SetParent(transform, false);
 
@@ -376,7 +316,6 @@ namespace Erenshor.XTarget
 
             EnsureEventSystem();
 
-            // ── Window panel ──────────────────────────────────────────────────
             _window = MakeRT("XTarget_Window", canvasGO.transform);
             _window.anchorMin        = new Vector2(0, 1);
             _window.anchorMax        = new Vector2(0, 1);
@@ -389,7 +328,6 @@ namespace Erenshor.XTarget
             _windowOutline.effectColor    = C_Border;
             _windowOutline.effectDistance = new Vector2(1, -1);
 
-            // ── Title bar ─────────────────────────────────────────────────────
             var titleBar = MakeRT("TitleBar", _window);
             _titleBarGO  = titleBar.gameObject;
             titleBar.anchorMin = new Vector2(0, 1);
@@ -406,7 +344,6 @@ namespace Erenshor.XTarget
             titleTxt.fontStyle = FontStyles.Bold;
             titleTxt.alignment = TextAlignmentOptions.MidlineLeft;
 
-            // Hide button (to the left of lock button)
             var hideBtn = MakeIconBtn("HideBtn", titleBar, "Hide");
             var hideRT  = hideBtn.GetComponent<RectTransform>();
             hideRT.anchorMin = new Vector2(1, 0);
@@ -416,7 +353,6 @@ namespace Erenshor.XTarget
             hideRT.anchoredPosition = new Vector2(-52, 0);
             hideBtn.onClick.AddListener(ToggleAutoHide);
 
-            // Lock button
             var lockBtn = MakeIconBtn("LockBtn", titleBar, "Unlock");
             var lockRT  = lockBtn.GetComponent<RectTransform>();
             lockRT.anchorMin = new Vector2(1, 0);
@@ -427,8 +363,6 @@ namespace Erenshor.XTarget
             _lockBtnLabel = lockBtn.GetComponentInChildren<TextMeshProUGUI>();
             lockBtn.onClick.AddListener(ToggleLock);
 
-
-            // ── Body (slot rows live here) ─────────────────────────────────────
             var bodyGO = new GameObject("Body");
             _body = bodyGO.AddComponent<RectTransform>();
             _body.SetParent(_window, false);
@@ -437,7 +371,6 @@ namespace Erenshor.XTarget
             _body.offsetMin        = new Vector2(PADDING, PADDING);
             _body.offsetMax        = new Vector2(-PADDING, -TITLE_H);
 
-            // Vertical layout for rows
             var vl = bodyGO.AddComponent<VerticalLayoutGroup>();
             vl.spacing               = 2;
             vl.childForceExpandWidth  = true;
@@ -446,7 +379,6 @@ namespace Erenshor.XTarget
             vl.childControlHeight     = true;
             vl.padding                = new RectOffset(0, 0, 0, 0);
 
-            // Empty-list label
             _emptyLabel = AddTMP("EmptyLabel", _body);
             _emptyLabel.text      = "No enemies in range";
             _emptyLabel.color     = C_EmptyText;
@@ -455,7 +387,6 @@ namespace Erenshor.XTarget
             _emptyLabel.gameObject.AddComponent<LayoutElement>().preferredHeight = ROW_H;
             _emptyLabel.gameObject.SetActive(false);
 
-            // ── Pre-build slot rows ────────────────────────────────────────────
             int cap = Mathf.Clamp(XTargetPlugin.MaxSlots.Value, 1, 20);
             _rows = new SlotRow[cap];
             for (int i = 0; i < cap; i++)
@@ -466,21 +397,14 @@ namespace Erenshor.XTarget
 
             XTargetPlugin.Log.LogInfo("[XTarget] uGUI built — " + cap + " slot rows pre-built.");
 
-            // Restore saved lock state
             if (XTargetPlugin.Locked.Value)
                 ToggleLock();
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Build one slot row inside the vertical layout group
-        //
-        //  [slotNum] [hpBarBg[fill]] [hpPct%]  [name]  [▶ target]  [#rank]
-        // ─────────────────────────────────────────────────────────────────────
         private SlotRow BuildSlotRow(RectTransform parent, int index)
         {
             var row = new SlotRow();
 
-            // Root container
             var rootGO = new GameObject("Slot_" + index);
             row.Root = rootGO;
             var rootRT = rootGO.AddComponent<RectTransform>();
@@ -489,24 +413,20 @@ namespace Erenshor.XTarget
             row.RowBg = rootGO.AddComponent<Image>();
             row.RowBg.color = C_RowNormal;
 
-            // Fixed row height
             var le = rootGO.AddComponent<LayoutElement>();
             le.preferredHeight = ROW_H;
             le.flexibleWidth   = 1;
 
-            // Invisible click target (full row) — sits on the Image
             row.Btn = rootGO.AddComponent<Button>();
             row.Btn.targetGraphic = row.RowBg;
 
-            // Hover colour swap via ColorBlock
             var cb = row.Btn.colors;
-            cb.normalColor      = Color.white;  // multiplied with RowBg.color
+            cb.normalColor      = Color.white;
             cb.highlightedColor = new Color32(140, 180, 220, 255);
             cb.pressedColor     = new Color32(100, 140, 180, 255);
             cb.selectedColor    = Color.white;
             row.Btn.colors = cb;
 
-            // ── Horizontal layout inside row ──────────────────────────────────
             var hl = rootGO.AddComponent<HorizontalLayoutGroup>();
             hl.padding               = new RectOffset(4, 4, 3, 3);
             hl.spacing               = 4;
@@ -515,7 +435,6 @@ namespace Erenshor.XTarget
             hl.childControlWidth      = true;
             hl.childControlHeight     = true;
 
-            // [1] Slot number  (14 px wide)
             row.SlotNum = AddTMP("SlotNum", rootRT);
             row.SlotNum.text      = (index + 1).ToString();
             row.SlotNum.color     = C_TextMuted;
@@ -523,7 +442,6 @@ namespace Erenshor.XTarget
             row.SlotNum.alignment = TextAlignmentOptions.Center;
             row.SlotNum.gameObject.AddComponent<LayoutElement>().preferredWidth = 14;
 
-            // [2] HP bar  (HP_BAR_W px wide)
             var barContainerGO = new GameObject("HpBarContainer");
             var barContainerRT = barContainerGO.AddComponent<RectTransform>();
             barContainerRT.SetParent(rootRT, false);
@@ -531,22 +449,19 @@ namespace Erenshor.XTarget
             barLE.preferredWidth  = HP_BAR_W;
             barLE.flexibleWidth   = 0;
 
-            // Background
             row.HpBarBg = barContainerGO.AddComponent<Image>();
             row.HpBarBg.color = C_HpBarBg;
 
-            // Fill (child, anchored left→right via anchorMax.x)
             var fillGO = new GameObject("HpBarFill");
             var fillRT = fillGO.AddComponent<RectTransform>();
             fillRT.SetParent(barContainerRT, false);
             fillRT.anchorMin = Vector2.zero;
-            fillRT.anchorMax = Vector2.one;   // updated each frame to slot.HpPct
+            fillRT.anchorMax = Vector2.one;
             fillRT.offsetMin = Vector2.zero;
             fillRT.offsetMax = Vector2.zero;
             row.HpBarFill       = fillGO.AddComponent<Image>();
             row.HpBarFill.color = C_HpGreen;
 
-            // HP % label (over the bar)
             row.HpPct = AddTMP("HpPct", barContainerRT);
             FillRT(row.HpPct.rectTransform, 0, 0, 0, 0);
             row.HpPct.text      = "100%";
@@ -556,7 +471,6 @@ namespace Erenshor.XTarget
             row.HpPct.alignment = TextAlignmentOptions.Center;
             row.HpPct.raycastTarget = false;
 
-            // [3] Name  (flexible)
             row.Name = AddTMP("Name", rootRT);
             row.Name.text      = "";
             row.Name.fontSize  = 11;
@@ -565,7 +479,6 @@ namespace Erenshor.XTarget
             row.Name.enableWordWrapping = false;
             row.Name.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1;
 
-            // [4] Arrow + target name  (72 px wide)
             row.TargetArrow = AddTMP("TargetArrow", rootRT);
             row.TargetArrow.text      = "";
             row.TargetArrow.fontSize  = 10;
@@ -575,7 +488,6 @@ namespace Erenshor.XTarget
             row.TargetArrow.enableWordWrapping = false;
             row.TargetArrow.gameObject.AddComponent<LayoutElement>().preferredWidth = 72;
 
-            // [5] Hate rank  (20 px wide)
             row.HateRank = AddTMP("HateRank", rootRT);
             row.HateRank.text      = "";
             row.HateRank.fontSize  = 10;
@@ -611,10 +523,6 @@ namespace Erenshor.XTarget
             XTargetPlugin.Instance.Config.Save();
         }
 
-
-        // ─────────────────────────────────────────────────────────────────────
-        // Builder helpers
-        // ─────────────────────────────────────────────────────────────────────
         private static void EnsureEventSystem()
         {
             if (Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>() != null) return;
@@ -639,13 +547,6 @@ namespace Erenshor.XTarget
             return img;
         }
 
-        private static void AddOutline(GameObject go, Color32 colour)
-        {
-            var ol = go.AddComponent<Outline>();
-            ol.effectColor    = colour;
-            ol.effectDistance = new Vector2(1, -1);
-        }
-
         private static TextMeshProUGUI AddTMP(string name, RectTransform parent)
         {
             var go  = new GameObject(name);
@@ -659,7 +560,6 @@ namespace Erenshor.XTarget
             return tmp;
         }
 
-        // Stretch rect to fill parent with insets
         private static void FillRT(RectTransform rt, float left, float right, float bottom, float top)
         {
             rt.anchorMin = Vector2.zero;
@@ -674,7 +574,7 @@ namespace Erenshor.XTarget
             var rt  = go.AddComponent<RectTransform>();
             rt.SetParent(parent, false);
             var img = go.AddComponent<Image>();
-            img.color = new Color(0, 0, 0, 0);   // transparent bg
+            img.color = new Color(0, 0, 0, 0);
             var btn = go.AddComponent<Button>();
 
             var lblGO = new GameObject("Label");
@@ -690,9 +590,6 @@ namespace Erenshor.XTarget
             return btn;
         }
 
-        // ─────────────────────────────────────────────────────────────────────
-        // Utilities
-        // ─────────────────────────────────────────────────────────────────────
         private static Color HpColor(float pct)
         {
             if (pct > 0.5f)
