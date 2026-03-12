@@ -31,7 +31,7 @@ When AutoHide is enabled, the window chrome (background, border, title bar) is h
 ---
 ## Installation
 - Install [BepInEx Mod Pack](https://github.com/et508/Erenshor.BepInEx/releases/tag/e1)
-- [Download the latest release](https://erenshorvault.app/)
+- [Download the latest release](https://erenshorvault.app/mod/xtended-target-window)
 - Extract folder into `Erenshor\BepInEx\plugins\` folder.
 
 ---
