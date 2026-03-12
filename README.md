@@ -7,7 +7,7 @@ Inspired by the Extended Target Window from EverQuest, this mod adds a real-time
 ## Features
 
 ### Aggro Tracking
-Every enemy that has you or a group member on its hate table is listed automatically. Unlike the game's internal aggro lists, this mod reads directly from each NPC's hate table so entries persist for the full duration of a fight — enemies won't vanish from the list just because they temporarily switched targets.
+Every enemy that has you or a group member on its hate table is listed automatically. This mod reads directly from each NPC's hate table so entries persist for the full duration of a fight — enemies won't vanish from the list just because they temporarily switched targets.
 
 ### Per-Row Information
 Each row in the window shows:
