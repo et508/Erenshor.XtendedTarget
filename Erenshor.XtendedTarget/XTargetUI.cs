@@ -135,7 +135,6 @@ namespace Erenshor.XTarget
         // ── Runtime ───────────────────────────────────────────────────────────
         private Canvas        _canvas;
         private RectTransform _window;
-        private bool          _minimized;
         private bool          _visible = true;
         private bool          _locked;
 
@@ -294,11 +293,8 @@ namespace Erenshor.XTarget
                 // Full chrome -- body inset by padding and title bar
                 _body.offsetMin = new Vector2(PADDING, PADDING);
                 _body.offsetMax = new Vector2(-PADDING, -TITLE_H);
-                if (!_minimized)
-                {
-                    float bodyH = isEmpty ? ROW_H : max * ROW_H + PADDING;
-                    _window.sizeDelta = new Vector2(WINDOW_W, TITLE_H + bodyH + PADDING);
-                }
+                float bodyH = isEmpty ? ROW_H : max * ROW_H + PADDING;
+                _window.sizeDelta = new Vector2(WINDOW_W, TITLE_H + bodyH + PADDING);
             }
         }
 
@@ -326,18 +322,18 @@ namespace Erenshor.XTarget
             // Arrow + target name
             if (string.IsNullOrEmpty(slot.TargetName))
             {
-                row.TargetArrow.text  = "<color=#3D4148>▶ ---</color>";
+                row.TargetArrow.text  = "<color=#3D4148>> ---</color>";
             }
             else if (slot.TargetingPlayer)
             {
-                row.TargetArrow.text = "<color=#666666>▶</color> <color=#EF4444><b>YOU</b></color>";
+                row.TargetArrow.text = "<color=#666666>></color> <color=#EF4444><b>YOU</b></color>";
             }
             else
             {
                 string tName = slot.TargetName.Length > 8
                     ? slot.TargetName.Substring(0, 7) + "…"
                     : slot.TargetName;
-                row.TargetArrow.text = $"<color=#666666>▶</color> <color=#88CCFF>{tName}</color>";
+                row.TargetArrow.text = $"<color=#666666>></color> <color=#88CCFF>{tName}</color>";
             }
 
             // Hate rank
@@ -410,26 +406,27 @@ namespace Erenshor.XTarget
             titleTxt.fontStyle = FontStyles.Bold;
             titleTxt.alignment = TextAlignmentOptions.MidlineLeft;
 
-            // Lock button (to the left of minimize button)
-            var lockBtn = MakeIconBtn("LockBtn", titleBar, "🔓");
+            // Hide button (to the left of lock button)
+            var hideBtn = MakeIconBtn("HideBtn", titleBar, "Hide");
+            var hideRT  = hideBtn.GetComponent<RectTransform>();
+            hideRT.anchorMin = new Vector2(1, 0);
+            hideRT.anchorMax = new Vector2(1, 1);
+            hideRT.pivot     = new Vector2(1, 0.5f);
+            hideRT.sizeDelta = new Vector2(40, 0);
+            hideRT.anchoredPosition = new Vector2(-52, 0);
+            hideBtn.onClick.AddListener(ToggleAutoHide);
+
+            // Lock button
+            var lockBtn = MakeIconBtn("LockBtn", titleBar, "Unlock");
             var lockRT  = lockBtn.GetComponent<RectTransform>();
             lockRT.anchorMin = new Vector2(1, 0);
             lockRT.anchorMax = new Vector2(1, 1);
             lockRT.pivot     = new Vector2(1, 0.5f);
-            lockRT.sizeDelta = new Vector2(24, 0);
-            lockRT.anchoredPosition = new Vector2(-26, 0);
+            lockRT.sizeDelta = new Vector2(48, 0);
+            lockRT.anchoredPosition = new Vector2(-2, 0);
             _lockBtnLabel = lockBtn.GetComponentInChildren<TextMeshProUGUI>();
             lockBtn.onClick.AddListener(ToggleLock);
 
-            // Minimize button (top-right of title bar)
-            var minBtn = MakeIconBtn("MinBtn", titleBar, "—");
-            var minRT  = minBtn.GetComponent<RectTransform>();
-            minRT.anchorMin = new Vector2(1, 0);
-            minRT.anchorMax = new Vector2(1, 1);
-            minRT.pivot     = new Vector2(1, 0.5f);
-            minRT.sizeDelta = new Vector2(24, 0);
-            minRT.anchoredPosition = new Vector2(-2, 0);
-            minBtn.onClick.AddListener(ToggleMinimize);
 
             // ── Body (slot rows live here) ─────────────────────────────────────
             var bodyGO = new GameObject("Body");
@@ -601,21 +598,19 @@ namespace Erenshor.XTarget
             _locked = !_locked;
             if (_lockBtnLabel != null)
             {
-                _lockBtnLabel.text  = _locked ? "🔒" : "🔓";
+                _lockBtnLabel.text  = _locked ? "Lock" : "Unlock";
                 _lockBtnLabel.color = _locked ? C_HateGold : Hex("#64748B", 255);
             }
             XTargetPlugin.Locked.Value = _locked;
             XTargetPlugin.Instance.Config.Save();
         }
 
-        private void ToggleMinimize()
+        private void ToggleAutoHide()
         {
-            _minimized = !_minimized;
-            _body.gameObject.SetActive(!_minimized);
-            _window.sizeDelta = _minimized
-                ? new Vector2(WINDOW_W, TITLE_H)
-                : new Vector2(WINDOW_W, TITLE_H + ROW_H + PADDING * 2);
+            XTargetPlugin.AutoHide.Value = true;
+            XTargetPlugin.Instance.Config.Save();
         }
+
 
         // ─────────────────────────────────────────────────────────────────────
         // Builder helpers

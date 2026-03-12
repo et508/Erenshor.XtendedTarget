@@ -14,7 +14,7 @@ namespace Erenshor.XTarget
         internal static class PluginInfo
         {
             public const string PLUGIN_GUID    = "et508.erenshor.xtarget";
-            public const string PLUGIN_NAME    = "Extended Target Window";
+            public const string PLUGIN_NAME    = "Xtended Target Window";
             public const string PLUGIN_VERSION = "1.0.0";
         }
 
